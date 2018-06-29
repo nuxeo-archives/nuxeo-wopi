@@ -10,16 +10,28 @@
   <extension target="org.nuxeo.ecm.platform.ui.web.auth.service.PluggableAuthenticationService"
     point="specificChains">
 
-    <specificAuthenticationChain name="wopi">
+    <specificAuthenticationChain name="wopi" handlePrompt="false">
       <urlPatterns>
-        <url>(.*)/wopi/.*</url>
+        <url>(.*)/wopi/files/(.*)</url>
+        <url>(.*)/wopi/containers/(.*)</url>
       </urlPatterns>
 
       <replacementChain>
-        <plugin>AUTOMATION_BASIC_AUTH</plugin>
         <plugin>TOKEN_AUTH</plugin>
       </replacementChain>
     </specificAuthenticationChain>
+
+  </extension>
+
+  <extension target="org.nuxeo.ecm.platform.ui.web.auth.service.PluggableAuthenticationService" point="startURL">
+
+    <startURLPattern>
+      <patterns>
+        <pattern>wopi.jsp</pattern>
+        <pattern>wopi/view/</pattern>
+        <pattern>wopi/edit/</pattern>
+      </patterns>
+    </startURLPattern>
 
   </extension>
 

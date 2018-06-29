@@ -21,7 +21,6 @@
 package org.nuxeo.ecm.platform.ui.web.auth.service;
 
 import java.io.IOException;
-import java.util.Arrays;
 
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
@@ -68,7 +67,8 @@ public class WOPIAuthFilter implements NuxeoAuthPreFilter {
         };
         // bypass other pre filters such as Oauth2
         NuxeoAuthFilterChain nuxeoAuthFilterChain = (NuxeoAuthFilterChain) chain;
-        nuxeoAuthFilterChain.mainFilter.doFilterInternal(wrappedRequest, response, nuxeoAuthFilterChain.standardFilterChain);
+        nuxeoAuthFilterChain.mainFilter.doFilterInternal(wrappedRequest, response,
+                nuxeoAuthFilterChain.standardFilterChain);
 
     }
 

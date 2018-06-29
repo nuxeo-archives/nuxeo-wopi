@@ -7,4 +7,5 @@ Bundle-Vendor: Nuxeo
 Nuxeo-WebModule: org.nuxeo.wopi.rest.WOPIApplication
 Nuxeo-Component: OSGI-INF/stores-contrib.xml,
  OSGI-INF/auth-contrib.xml,
- OSGI-INF/versioning-policies-contrib.xml
+ OSGI-INF/versioning-policies-contrib.xml,
+ OSGI-INF/request-controller-contrib.xml
