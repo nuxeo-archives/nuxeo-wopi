@@ -141,6 +141,8 @@ public class FilesResource {
         switch (override) {
         case "LOCK":
             return lock(fileId, lock, oldLock);
+        case "GET_LOCK":
+            return getLock(fileId);
         case "UNLOCK":
             return unlock(fileId, lock);
         case "REFRESH_LOCK":
@@ -214,6 +216,43 @@ public class FilesResource {
             // locked by another WOPI client
             response.addHeader("X-WOPI-Lock", currentLock);
             return Response.status(Response.Status.CONFLICT).build();
+        }
+    }
+
+    /**
+     * Implements the GetLock operation.
+     * <p>
+     * See <a href="https://wopi.readthedocs.io/projects/wopirest/en/latest/files/GetLock.html"></a>.
+     */
+    protected Object getLock(String fileId) {
+        NuxeoPrincipal principal = (NuxeoPrincipal) request.getUserPrincipal();
+        try (CloseableCoreSession session = createCoreSession(principal)) {
+            DocumentRef ref = new IdRef(fileId);
+            if (!session.exists(ref)) {
+                return Response.status(Response.Status.NOT_FOUND).build();
+            }
+
+            DocumentModel doc = session.getDocument(ref);
+            Blob blob = getMainBlob(doc);
+            if (blob == null) {
+                return Response.status(Response.Status.NOT_FOUND).build();
+            }
+
+            if (!doc.isLocked()) {
+                response.addHeader("X-WOPI-Lock", "");
+                return Response.ok().build();
+            }
+
+            KeyValueService service = Framework.getService(KeyValueService.class);
+            KeyValueStore store = service.getKeyValueStore("wopi-locks");
+            String currentLock = store.getString(doc.getId());
+            if (currentLock == null) {
+                // locked by Nuxeo
+                return Response.status(Response.Status.CONFLICT).build();
+            }
+
+            response.addHeader("X-WOPI-Lock", currentLock);
+            return Response.ok().build();
         }
     }
 

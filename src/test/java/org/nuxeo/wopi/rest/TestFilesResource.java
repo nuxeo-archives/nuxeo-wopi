@@ -305,6 +305,48 @@ public class TestFilesResource {
     }
 
     @Test
+    public void testGetLock() {
+        Map<String, String> headers = new HashMap<>();
+        headers.put("X-WOPI-Override", "GET_LOCK");
+
+        // fail - 404
+        checkPostNotFound(headers);
+
+        // success - 200 - document not locked
+        try (CloseableClientResponse response = post(johnToken, headers, blobDoc.getId())) {
+            assertEquals(200, response.getStatus());
+            String lock = response.getHeaders().getFirst("X-WOPI-Lock");
+            assertEquals("", lock);
+        }
+
+        // lock document from WOPI client
+        headers.put("X-WOPI-Override", "LOCK");
+        String expectedLock = "foo";
+        headers.put("X-WOPI-Lock", expectedLock);
+        try (CloseableClientResponse response = post(johnToken, headers, blobDoc.getId())) {
+            assertEquals(200, response.getStatus());
+            assertTrue(session.getDocument(blobDoc.getRef()).isLocked());
+        }
+
+        // success - 200 - return lock
+        headers.remove("X-WOPI-LOCK");
+        headers.put("X-WOPI-Override", "GET_LOCK");
+        try (CloseableClientResponse response = post(johnToken, headers, blobDoc.getId())) {
+            assertEquals(200, response.getStatus());
+            String lock = response.getHeaders().getFirst("X-WOPI-Lock");
+            assertEquals(expectedLock, lock);
+        }
+
+        // fail - 409 - locked by Nuxeo
+        session.getDocument(hugeBlobDoc.getRef()).setLock();
+        transactionalFeature.nextTransaction();
+        try (CloseableClientResponse response = post(johnToken, headers, hugeBlobDoc.getId())) {
+            assertEquals(409, response.getStatus());
+            assertTrue(session.getDocument(hugeBlobDoc.getRef()).isLocked());
+        }
+    }
+
+    @Test
     public void testUnlock() {
         Map<String, String> headers = new HashMap<>();
         headers.put("X-WOPI-Override", "UNLOCK");
