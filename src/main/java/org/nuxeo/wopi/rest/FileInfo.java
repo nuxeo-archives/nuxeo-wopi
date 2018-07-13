@@ -60,6 +60,9 @@ public abstract class FileInfo {
     @JsonProperty("SupportsLocks")
     public abstract boolean supportsLocks();
 
+    @JsonProperty("SupportsRename")
+    public abstract boolean supportsRename();
+
     @JsonProperty("SupportsUpdate")
     public abstract boolean supportsUpdate();
 
@@ -113,6 +116,9 @@ public abstract class FileInfo {
 
         @JsonProperty("SupportsLocks")
         FileInfo.Builder supportsLocks(boolean supportsLocks);
+
+        @JsonProperty("SupportsRename")
+        FileInfo.Builder supportsRename(boolean supportsRename);
 
         @JsonProperty("SupportsUpdate")
         FileInfo.Builder supportsUpdate(boolean supportsUpdate);

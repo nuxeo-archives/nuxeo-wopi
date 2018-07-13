@@ -5,6 +5,7 @@
   "UserId": "joe",
   "Version": "0.0",
   "SupportsLocks": true,
+  "SupportsRename": true,
   "SupportsUpdate": true,
   "SupportsDeleteFile": true,
   "IsAnonymousUser": false,

@@ -180,6 +180,7 @@ public class TestFilesResource {
             Blob hugeBlob = mock(Blob.class, withSettings().serializable());
             Mockito.when(hugeBlob.getLength()).thenReturn(Long.MAX_VALUE);
             Mockito.when(hugeBlob.getStream()).thenReturn(new ByteArrayInputStream(new byte[] {}));
+            Mockito.when(hugeBlob.getFilename()).thenReturn("hugeBlobFilename");
             hugeBlobDoc.setPropertyValue("file:content", (Serializable) hugeBlob);
             hugeBlobDoc = johnSession.createDocument(hugeBlobDoc);
 
@@ -500,6 +501,84 @@ public class TestFilesResource {
         try (CloseableClientResponse response = post(johnToken, headers, hugeBlobDoc.getId())) {
             assertEquals(409, response.getStatus());
             assertTrue(session.getDocument(hugeBlobDoc.getRef()).isLocked());
+        }
+    }
+
+    @Test
+    public void testRenameFile() throws IOException, JSONException {
+        Map<String, String> headers = new HashMap<>();
+        headers.put("X-WOPI-Override", "RENAME_FILE");
+
+        checkPostNotFound(headers, "contents");
+
+        // fail - 409 - joe has no write permission
+        try (CloseableClientResponse response = post(joeToken, headers, blobDoc.getId())) {
+            assertEquals(409, response.getStatus());
+        }
+
+        // success - 200 - blob renamed
+        headers.put("X-WOPI-RequestedName", "renamed-test-file.txt");
+        try (CloseableClientResponse response = post(johnToken, headers, blobDoc.getId())) {
+            assertEquals(200, response.getStatus());
+            checkJSONResponse(response, "json/RenameFile.json");
+            transactionalFeature.nextTransaction();
+            Blob renamedBlob = session.getDocument(blobDoc.getRef()).getAdapter(BlobHolder.class).getBlob();
+            assertNotNull(renamedBlob);
+            assertEquals("renamed-test-file.txt", renamedBlob.getFilename());
+        }
+
+        // lock document from WOPI client
+        headers.put("X-WOPI-Override", "LOCK");
+        headers.put("X-WOPI-Lock", "foo");
+        try (CloseableClientResponse response = post(johnToken, headers, blobDoc.getId())) {
+            assertEquals(200, response.getStatus());
+            assertTrue(session.getDocument(blobDoc.getRef()).isLocked());
+        }
+
+        // fail - 409 - joe has no write permission
+        headers.put("X-WOPI-Override", "RENAME_FILE");
+        headers.put("X-WOPI-RequestedName", "renamed-wopi-locked-test-file.txt");
+        try (CloseableClientResponse response = post(joeToken, headers, blobDoc.getId())) {
+            assertEquals(409, response.getStatus());
+        }
+
+        // success - 200 - blob renamed
+        try (CloseableClientResponse response = post(johnToken, headers, blobDoc.getId())) {
+            assertEquals(200, response.getStatus());
+            checkJSONResponse(response, "json/RenameFile-wopiLocked.json");
+            transactionalFeature.nextTransaction();
+            Blob renamedBlob = session.getDocument(blobDoc.getRef()).getAdapter(BlobHolder.class).getBlob();
+            assertNotNull(renamedBlob);
+            assertEquals("renamed-wopi-locked-test-file.txt", renamedBlob.getFilename());
+        }
+
+        // fail - 409 - locked by another client
+        headers.put("X-WOPI-Lock", "bar");
+        headers.put("X-WOPI-RequestedName", "renamed-wopi-locked-other-client-test-file.txt");
+        try (CloseableClientResponse response = post(johnToken, headers, blobDoc.getId())) {
+            assertEquals(409, response.getStatus());
+            String lock = response.getHeaders().getFirst("X-WOPI-Lock");
+            assertEquals("foo", lock);
+            transactionalFeature.nextTransaction();
+            DocumentModel doc = session.getDocument(blobDoc.getRef());
+            assertTrue(doc.isLocked());
+            Blob blob = doc.getAdapter(BlobHolder.class).getBlob();
+            assertNotNull(blob);
+            assertEquals("renamed-wopi-locked-test-file.txt", blob.getFilename());
+        }
+
+        // fail - 409 - locked by Nuxeo
+        session.getDocument(hugeBlobDoc.getRef()).setLock();
+        transactionalFeature.nextTransaction();
+        headers.remove("X-WOPI-Lock");
+        headers.put("X-WOPI-RequestedName", "renamed-wopi-locked-nuxeo-test-file.txt");
+        try (CloseableClientResponse response = post(johnToken, headers, hugeBlobDoc.getId())) {
+            assertEquals(409, response.getStatus());
+            DocumentModel doc = session.getDocument(hugeBlobDoc.getRef());
+            assertTrue(doc.isLocked());
+            Blob blob = doc.getAdapter(BlobHolder.class).getBlob();
+            assertNotNull(blob);
+            assertEquals("hugeBlobFilename", blob.getFilename());
         }
     }
 

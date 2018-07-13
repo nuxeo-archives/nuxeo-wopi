@@ -134,7 +134,8 @@ public class FilesResource {
 
     @POST
     public Object doPost(@PathParam("fileId") String fileId, @HeaderParam("X-WOPI-Override") String override,
-            @HeaderParam("X-WOPI-Lock") String lock, @HeaderParam("X-WOPI-OldLock") String oldLock) {
+            @HeaderParam("X-WOPI-Lock") String lock, @HeaderParam("X-WOPI-OldLock") String oldLock,
+            @HeaderParam("X-WOPI-RequestedName") String requestedName) {
         if (StringUtils.isBlank(override)) {
             return Response.status(Response.Status.BAD_REQUEST).build();
         }
@@ -145,8 +146,10 @@ public class FilesResource {
             return unlock(fileId, lock);
         case "REFRESH_LOCK":
             return refreshLock(fileId, lock);
+        case "RENAME_FILE":
+            return renameFile(fileId, lock, requestedName);
         case "DELETE":
-                return deleteFile(fileId);
+            return deleteFile(fileId);
         default:
             return Response.status(Response.Status.BAD_REQUEST).build();
         }
@@ -265,6 +268,66 @@ public class FilesResource {
                     store.setTTL(doc.getId(), 30 * 60 * 1000);
                 }
                 return Response.ok().build();
+            }
+
+            // locked by another WOPI client
+            response.addHeader("X-WOPI-Lock", currentLock);
+            return Response.status(Response.Status.CONFLICT).build();
+        }
+    }
+
+    /**
+     * Implements the RenameFile operation.
+     * <p>
+     * See <a href="https://wopi.readthedocs.io/projects/wopirest/en/latest/files/RenameFile.html"></a>.
+     */
+    public Object renameFile(String fileId, String lock, String requestedName) {
+        NuxeoPrincipal principal = (NuxeoPrincipal) request.getUserPrincipal();
+        try (CloseableCoreSession session = createCoreSession(principal)) {
+            DocumentRef ref = new IdRef(fileId);
+            if (!session.exists(ref)) {
+                return Response.status(Response.Status.NOT_FOUND).build();
+            }
+
+            DocumentModel doc = session.getDocument(ref);
+            Blob blob = getMainBlob(doc);
+            if (blob == null) {
+                return Response.status(Response.Status.NOT_FOUND).build();
+            }
+
+            String nameJSON = "{ \"Name\": \"" + requestedName + "\" }";
+            if (!doc.isLocked()) {
+                if (!session.hasPermission(doc.getRef(), SecurityConstants.WRITE_PROPERTIES)) {
+                    // cannot rename blob
+                    return Response.status(Response.Status.CONFLICT).build();
+                }
+                blob.setFilename(requestedName);
+                BlobHolder bh = doc.getAdapter(BlobHolder.class);
+                bh.setBlob(blob);
+                doc.putContextData("source", "wopi");
+                doc = session.saveDocument(doc);
+                return Response.ok(nameJSON).build();
+            }
+
+            KeyValueService service = Framework.getService(KeyValueService.class);
+            KeyValueStore store = service.getKeyValueStore("wopi-locks");
+            String currentLock = store.getString(doc.getId());
+            if (currentLock == null) {
+                // locked by Nuxeo
+                return Response.status(Response.Status.CONFLICT).build();
+            }
+
+            if (lock.equals(currentLock)) {
+                if (!session.hasPermission(doc.getRef(), SecurityConstants.WRITE_PROPERTIES)) {
+                    // cannot rename blob
+                    return Response.status(Response.Status.CONFLICT).build();
+                }
+                blob.setFilename(requestedName);
+                BlobHolder bh = doc.getAdapter(BlobHolder.class);
+                bh.setBlob(blob);
+                doc.putContextData("source", "wopi");
+                doc = session.saveDocument(doc);
+                return Response.ok(nameJSON).build();
             }
 
             // locked by another WOPI client
@@ -429,7 +492,7 @@ public class FilesResource {
     }
 
     protected FileInfo.Builder addHostCapabilitiesProperties(FileInfo.Builder builder) {
-        return builder.supportsLocks(true).supportsUpdate(true).supportsDeleteFile(true);
+        return builder.supportsLocks(true).supportsRename(true).supportsUpdate(true).supportsDeleteFile(true);
     }
 
     protected FileInfo.Builder addUserMetadataProperties(FileInfo.Builder builder, NuxeoPrincipal principal) {
