@@ -19,8 +19,6 @@
 
 package org.nuxeo.wopi.jaxrs;
 
-import static org.nuxeo.wopi.Constants.FILE_CONTENT_PROPERTY;
-
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 
@@ -29,8 +27,10 @@ import org.nuxeo.ecm.core.api.CoreSession;
 import org.nuxeo.ecm.core.api.DocumentModel;
 import org.nuxeo.ecm.core.api.DocumentRef;
 import org.nuxeo.ecm.core.api.IdRef;
+import org.nuxeo.ecm.webengine.model.WebContext;
 import org.nuxeo.ecm.webengine.model.WebObject;
 import org.nuxeo.ecm.webengine.model.impl.ModuleRoot;
+import org.nuxeo.wopi.FileInfo;
 import org.nuxeo.wopi.exception.NotFoundException;
 
 /**
@@ -41,12 +41,13 @@ import org.nuxeo.wopi.exception.NotFoundException;
 public class WOPIRoot extends ModuleRoot {
 
     @Path("/files/{fileId}")
-    public Object filesResource(@PathParam("fileId") String fileId) {
-        // TODO handle multi repository
-        CoreSession session = getContext().getCoreSession();
-        DocumentModel doc = getDocument(session, fileId);
-        Blob blob = getMainBlob(doc);
-        return newObject("wopiFiles", session, doc, blob);
+    public Object filesResource(@PathParam("fileId") FileInfo fileInfo) {
+        WebContext context = getContext();
+        context.setRepositoryName(fileInfo.repositoryName);
+        CoreSession session = context.getCoreSession();
+        DocumentModel doc = getDocument(session, fileInfo.docId);
+        Blob blob = getBlob(doc, fileInfo.xpath);
+        return newObject("wopiFiles", session, doc, blob, fileInfo.xpath);
     }
 
     protected DocumentModel getDocument(CoreSession session, String fileId) {
@@ -57,9 +58,9 @@ public class WOPIRoot extends ModuleRoot {
         return session.getDocument(ref);
     }
 
-    protected Blob getMainBlob(DocumentModel doc) {
+    protected Blob getBlob(DocumentModel doc, String xpath) {
         // TODO check cloud services blob provider?
-        Blob blob = (Blob) doc.getPropertyValue(FILE_CONTENT_PROPERTY);
+        Blob blob = (Blob) doc.getPropertyValue(xpath);
         if (blob == null) {
             throw new NotFoundException();
         }

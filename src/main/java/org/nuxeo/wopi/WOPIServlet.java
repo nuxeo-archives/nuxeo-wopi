@@ -122,7 +122,6 @@ public class WOPIServlet extends HttpServlet {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid path: " + path);
             return;
         }
-        // view/default/fa5420ed-55f6-477c-ae66-cd554384bcb3
         String[] parts = path.split("/");
         int length = parts.length;
         if (length < 3) {
@@ -133,6 +132,7 @@ public class WOPIServlet extends HttpServlet {
         String action = parts[0];
         String repository = parts[1];
         String docId = parts[2];
+        String xpath = parts.length == 4 ? parts[3] : FILE_CONTENT_PROPERTY;
         try (CloseableCoreSession session = CoreInstance.openCoreSession(repository)) {
             DocumentRef ref = new IdRef(docId);
             if (!session.exists(ref)) {
@@ -141,7 +141,7 @@ public class WOPIServlet extends HttpServlet {
             }
 
             DocumentModel doc = session.getDocument(ref);
-            Blob blob = getMainBlob(doc);
+            Blob blob = getBlob(doc, xpath);
             if (blob == null) {
                 response.sendError(HttpServletResponse.SC_NOT_FOUND, "No blob on document");
                 return;
@@ -161,15 +161,16 @@ public class WOPIServlet extends HttpServlet {
             String token = tokenAuthenticationService.acquireToken(principal.getName(), "wopi", "device", null, "rw");
             request.setAttribute(ACCESS_TOKEN, token);
             String baseURL = VirtualHostHelper.getBaseURL(request);
-            String wopiSrc = URLEncoder.encode(String.format("%ssite/wopi/files/%s", baseURL, docId), UTF_8.name());
+            String fileId = FileInfo.computeFileId(doc, xpath);
+            String wopiSrc = URLEncoder.encode(String.format("%ssite/wopi/files/%s", baseURL, fileId), UTF_8.name());
             request.setAttribute(FORM_URL, url + WOPI_SRC + "=" + wopiSrc);
             RequestDispatcher requestDispatcher = request.getRequestDispatcher(WOPI_JSP);
             requestDispatcher.forward(request, response);
         }
     }
 
-    protected Blob getMainBlob(DocumentModel doc) {
+    protected Blob getBlob(DocumentModel doc, String xpath) {
         // TODO check cloud services blob provider?
-        return (Blob) doc.getPropertyValue(FILE_CONTENT_PROPERTY);
+        return (Blob) doc.getPropertyValue(xpath);
     }
 }

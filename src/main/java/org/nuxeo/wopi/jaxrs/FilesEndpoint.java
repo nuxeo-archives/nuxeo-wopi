@@ -126,14 +126,17 @@ public class FilesEndpoint extends DefaultObject {
 
     protected Blob blob;
 
+    protected String xpath;
+
     protected KeyValueStore store;
 
     @Override
     public void initialize(Object... args) {
-        assert args != null && args.length == 3;
+        assert args != null && args.length == 4;
         session = (CoreSession) args[0];
         doc = (DocumentModel) args[1];
         blob = (Blob) args[2];
+        xpath = (String) args[3];
         store = Framework.getService(KeyValueService.class).getKeyValueStore(Constants.WOPI_LOCKS_STORE_NAME);
     }
 
@@ -331,7 +334,8 @@ public class FilesEndpoint extends DefaultObject {
         String newFileName = relativeTarget;
         if (StringUtils.isNotEmpty(suggestedTarget)) {
             newFileName = suggestedTarget.startsWith(".")
-                    ? FilenameUtils.getBaseName(blob.getFilename()) + suggestedTarget : suggestedTarget;
+                    ? FilenameUtils.getBaseName(blob.getFilename()) + suggestedTarget
+                    : suggestedTarget;
         }
 
         DocumentModel parent = session.getDocument(parentRef);
@@ -432,8 +436,8 @@ public class FilesEndpoint extends DefaultObject {
         }
 
         String baseURL = VirtualHostHelper.getBaseURL(request);
-        String shareURL = String.format("%swopi/%s/%s/%s", baseURL,
-                urlType.equals(SHARE_URL_READ_ONLY) ? "view" : "edit", doc.getRepositoryName(), doc.getId());
+        String shareURL = String.format("%swopi/%s/%s/%s/%s", baseURL,
+                urlType.equals(SHARE_URL_READ_ONLY) ? "view" : "edit", doc.getRepositoryName(), doc.getId(), xpath);
         Map<String, Serializable> map = new HashMap<>();
         map.put(SHARE_URL, shareURL);
         return Response.ok(map).type(MediaType.APPLICATION_JSON_TYPE).build();
