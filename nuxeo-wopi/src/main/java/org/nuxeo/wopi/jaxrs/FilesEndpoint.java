@@ -198,7 +198,7 @@ public class FilesEndpoint extends DefaultObject {
         logRequest(OPERATION_CHECK_FILE_INFO);
         Map<String, Serializable> checkFileInfoMap = buildCheckFileInfoMap();
         logResponse(OPERATION_CHECK_FILE_INFO, OK.getStatusCode(), checkFileInfoMap);
-        return Response.ok(WOPIMap.of(checkFileInfoMap)).build();
+        return Response.ok(checkFileInfoMap).build();
     }
 
     /**
@@ -470,7 +470,7 @@ public class FilesEndpoint extends DefaultObject {
         map.put(HOST_VIEW_URL, hostViewUrl);
         map.put(HOST_EDIT_URL, hostEditUrl);
         logResponse(OPERATION_PUT_RELATIVE_FILE, OK.getStatusCode(), map);
-        return Response.ok(WOPIMap.of(map)).build();
+        return Response.ok(map).type(MediaType.APPLICATION_JSON).build();
     }
 
     /**
@@ -478,7 +478,6 @@ public class FilesEndpoint extends DefaultObject {
      * <p>
      * See <a href="https://wopi.readthedocs.io/projects/wopirest/en/latest/files/RenameFile.html"></a>.
      */
-    @Produces(MediaType.APPLICATION_JSON)
     public Object renameFile() {
         checkWritePropertiesPermission(OPERATION_RENAME_FILE);
 
@@ -517,7 +516,7 @@ public class FilesEndpoint extends DefaultObject {
         Map<String, Serializable> map = new HashMap<>();
         map.put(NAME, requestedName);
         logResponse(OPERATION_RENAME_FILE, OK.getStatusCode(), map);
-        return Response.ok(WOPIMap.of(map)).build();
+        return Response.ok(map).type(MediaType.APPLICATION_JSON).build();
     }
 
     /**
@@ -525,7 +524,6 @@ public class FilesEndpoint extends DefaultObject {
      * <p>
      * See <a href="https://wopi.readthedocs.io/projects/wopirest/en/latest/files/GetShareUrl.html"></a>.
      */
-    @Produces(MediaType.APPLICATION_JSON)
     public Object getShareUrl() {
         String urlType = getHeader(OPERATION_GET_SHARE_URL, URL_TYPE, true);
         logRequest(OPERATION_GET_SHARE_URL, URL_TYPE, urlType);
@@ -543,7 +541,7 @@ public class FilesEndpoint extends DefaultObject {
         Map<String, Serializable> map = new HashMap<>();
         map.put(SHARE_URL, shareURL);
         logResponse(OPERATION_GET_SHARE_URL, OK.getStatusCode(), map);
-        return Response.ok(WOPIMap.of(map)).build();
+        return Response.ok(map).type(MediaType.APPLICATION_JSON).build();
     }
 
     @POST
