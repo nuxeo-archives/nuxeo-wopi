@@ -1,2 +1,1 @@
-# nuxeo-wopi
-Nuxeo implementation of the WOPI REST endpoints
+This repository has been merged into https://github.com/nuxeo/nuxeo
